@@ -283,7 +283,8 @@ extern "C"
 		}
 
 		g_EffekseerRenderer->SetCameraParameter(cameraFrontDirection, cameraPosition);
-		
+		g_EffekseerManager->SetCameraParameter(cameraFrontDirection, cameraPosition);
+
 		// 背景テクスチャをセット
 		SetBackGroundTexture(settings.backgroundTexture);
 
@@ -300,6 +301,41 @@ extern "C"
 	{
 		if (g_EffekseerManager == nullptr) return;
 		if (g_EffekseerRenderer == nullptr) return;
+
+		RenderSettings& settings = renderSettings[renderId];
+		Effekseer::Matrix44 projectionMatrix, cameraMatrix;
+
+		if (settings.stereoEnabled) {
+			if (settings.stereoRenderCount == 0) {
+				projectionMatrix = settings.leftProjectionMatrix;
+				cameraMatrix = settings.leftCameraMatrix;
+			}
+			else if (settings.stereoRenderCount == 1) {
+				projectionMatrix = settings.rightProjectionMatrix;
+				cameraMatrix = settings.rightCameraMatrix;
+			}
+		}
+		else {
+			projectionMatrix = settings.projectionMatrix;
+			cameraMatrix = settings.cameraMatrix;
+		}
+
+		if (settings.renderIntoTexture && !g_isOpenGLMode)
+		{
+			// テクスチャに対してレンダリングするときは上下反転させる
+			projectionMatrix.Values[1][1] = -projectionMatrix.Values[1][1];
+		}
+
+		// 行列をセット
+		g_EffekseerRenderer->SetProjectionMatrix(projectionMatrix);
+		g_EffekseerRenderer->SetCameraMatrix(cameraMatrix);
+
+		// convert a right hand into a left hand
+		::Effekseer::Vector3D cameraPosition;
+		::Effekseer::Vector3D cameraFrontDirection;
+		CalculateCameraDirectionAndPosition(cameraMatrix, cameraFrontDirection, cameraPosition);
+
+		g_EffekseerManager->SetCameraParameter(cameraFrontDirection, cameraPosition);
 
 		g_EffekseerRenderer->BeginRendering();
 		g_EffekseerManager->DrawFront();
@@ -372,6 +408,7 @@ extern "C"
 		}
 
 		g_EffekseerRenderer->SetCameraParameter(cameraFrontDirection, cameraPosition);
+		g_EffekseerManager->SetCameraParameter(cameraFrontDirection, cameraPosition);
 
 		// 背景テクスチャをセット
 		SetBackGroundTexture(settings.backgroundTexture);
